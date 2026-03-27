@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caro Online</title>
+  <style>
+    :root {
+      --bg-1: #f7efe5;
+      --bg-2: #e6f0ea;
+      --surface: rgba(255, 252, 247, 0.88);
+      --surface-strong: #fffdf9;
+      --ink: #1f2a24;
+      --muted: #6f7b73;
+      --line: rgba(31, 42, 36, 0.12);
+      --accent: #d94f3d;
+      --accent-2: #2f7a56;
+      --shadow: 0 18px 48px rgba(59, 52, 46, 0.12);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Trebuchet MS", "Lucida Sans Unicode", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(217, 79, 61, 0.18), transparent 28%),
+        radial-gradient(circle at 85% 18%, rgba(47, 122, 86, 0.22), transparent 24%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      border-radius: 999px;
+      pointer-events: none;
+      filter: blur(18px);
+      opacity: 0.45;
+      z-index: 0;
+    }
+
+    body::before {
+      width: 280px;
+      height: 280px;
+      top: -80px;
+      right: -60px;
+      background: rgba(217, 79, 61, 0.18);
+    }
+
+    body::after {
+      width: 320px;
+      height: 320px;
+      left: -120px;
+      bottom: -120px;
+      background: rgba(47, 122, 86, 0.16);
+    }
+
+    #khung-phong {
+      position: relative;
+      z-index: 1;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 36px 18px 40px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .hero-card,
+    #menu-phong,
+    #thong-tin-phong,
+    .board-shell {
+      background: var(--surface);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      border-radius: var(--radius-xl);
+      padding: 26px 28px;
+      min-height: 180px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      right: -30px;
+      top: -30px;
+      width: 180px;
+      height: 180px;
+      background:
+        radial-gradient(circle at center, rgba(217, 79, 61, 0.24), transparent 60%);
+      border-radius: 999px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(31, 42, 36, 0.06);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+    }
+
+    .hero-copy {
+      max-width: 520px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 14px;
+    }
+
+    .mini-card {
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(31, 42, 36, 0.08);
+    }
+
+    .mini-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .mini-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    #menu-phong,
+    #thong-tin-phong {
+      border-radius: var(--radius-xl);
+      padding: 24px;
+    }
+
+    #menu-phong h2 {
+      margin: 0 0 18px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+    }
+
+    .menu-copy {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .menu-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 4px 0;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      height: 1px;
+      flex: 1;
+      background: var(--line);
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 13px 18px;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #tao-phong,
+    #vao-phong,
+    #bat-dau-choi {
+      font-weight: 700;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    #tao-phong {
+      background: linear-gradient(135deg, #d94f3d, #bf3d2e);
+      color: #fff;
+    }
+
+    #vao-phong {
+      background: linear-gradient(135deg, #2f7a56, #225c40);
+      color: #fff;
+    }
+
+    #bat-dau-choi {
+      display: none;
+      background: linear-gradient(135deg, #1f2a24, #31473d);
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    #bat-dau-choi[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid rgba(31, 42, 36, 0.12);
+      border-radius: 14px;
+      padding: 13px 14px;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    input:focus {
+      border-color: rgba(47, 122, 86, 0.45);
+      box-shadow: 0 0 0 4px rgba(47, 122, 86, 0.12);
+    }
+
+    #thongbao {
+      min-height: 24px;
+      margin-top: 6px;
+      color: #bf3d2e;
+      font-weight: 700;
+      white-space: pre-line;
+    }
+
+    #thong-tin-phong {
+      display: none;
+    }
+
+    .room-title {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    #hang-dieu-khien {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .room-code {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 16px;
+      background: rgba(31, 42, 36, 0.06);
+      font-weight: 700;
+    }
+
+    #ma-phong-hienthi {
+      color: var(--accent);
+      font-size: 24px;
+      letter-spacing: 0.06em;
+    }
+
+    #danhsach-nguoi-choi {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .the-nguoi-choi {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(31, 42, 36, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .cham-mau {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      display: inline-block;
+      border: 2px solid rgba(255, 255, 255, 0.72);
+      box-shadow: 0 0 0 1px rgba(31, 42, 36, 0.12);
+    }
+
+    #trangthai {
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(217, 79, 61, 0.08), rgba(47, 122, 86, 0.08));
+      border: 1px solid rgba(31, 42, 36, 0.08);
+      text-align: center;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+
+    .board-shell {
+      border-radius: var(--radius-xl);
+      padding: 18px;
+    }
+
+    .board-frame {
+      overflow: auto;
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(245, 239, 230, 0.92));
+      border: 1px solid rgba(31, 42, 36, 0.1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    #bangcaro {
+      display: none;
+      margin: 0;
+      background: #fffaf1;
+      border: 0;
+      box-shadow: inset 0 0 0 1px rgba(31, 42, 36, 0.08);
+    }
+
+    @media (max-width: 920px) {
+      .hero,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      #khung-phong {
+        padding: 18px 12px 24px;
+      }
+
+      .hero-card,
+      #menu-phong,
+      #thong-tin-phong,
+      .board-shell {
+        border-radius: 22px;
+      }
+
+      .hero-card,
+      #menu-phong,
+      #thong-tin-phong {
+        padding: 18px;
+      }
+
+      .input-row {
+        grid-template-columns: 1fr;
+      }
+
+      #hang-dieu-khien {
+        align-items: stretch;
+      }
+
+      #bat-dau-choi {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="khung-phong">
+    <section class="hero">
+      <div class="hero-card">
+        <span class="eyebrow">Board Game Lobby</span>
+        <h1>Caro<br>Battle Room</h1>
+        <p class="hero-copy">
+          Tạo phòng nhanh, mời bạn bè vào ngay và bắt đầu ván Caro nhiều người với màu cờ riêng, lượt rõ ràng và hiệu ứng chiến thắng nổi bật.
+        </p>
+      </div>
+      <div class="hero-side">
+        <div class="mini-card">
+          <strong>Tạo phòng tức thì</strong>
+          <span>Chủ phòng vào trước, nhận mã mời và kiểm soát thời điểm bắt đầu trận đấu.</span>
+        </div>
+        <div class="mini-card">
+          <strong>Chơi theo lượt</strong>
+          <span>Từ 2 người trở lên, chủ phòng bấm bắt đầu là cả phòng bước vào ván đấu ngay.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div>
+        <div id="menu-phong">
+          <h2>Vào Trận</h2>
+          <p class="menu-copy">
+            Tạo một phòng mới để làm chủ trận đấu, hoặc nhập mã có sẵn để tham gia cùng mọi người.
+          </p>
+          <div class="menu-stack">
+            <button id="tao-phong">Tao phong moi</button>
+            <div class="divider">hoac</div>
+            <div class="input-row">
+              <input id="ma-phong" placeholder="Nhap ma phong..." maxlength="8" />
+              <button id="vao-phong">Vao phong</button>
+            </div>
+            <div id="thongbao"></div>
+          </div>
+        </div>
+
+        <div id="thong-tin-phong">
+          <div class="room-title">Phong hien tai</div>
+          <div id="hang-dieu-khien">
+            <div class="room-code">
+              <span>Ma phong</span>
+              <span id="ma-phong-hienthi"></span>
+            </div>
+            <button id="bat-dau-choi" type="button">Bat dau choi</button>
+          </div>
+          <div id="danhsach-nguoi-choi"></div>
+          <div id="trangthai"></div>
+        </div>
+      </div>
+
+      <div class="board-shell">
+        <div class="board-frame">
+          <canvas id="bangcaro" width="800" height="600"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: caro-online
+    runtime: node
+    plan: free
+    rootDir: maychu
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeployTrigger: commit
+    healthCheckPath: /healthz

@@ -1,0 +1,14 @@
+{
+  "name": "maychu-caro",
+  "version": "1.0.0",
+  "main": "chinh.js",
+  "type": "commonjs",
+  "scripts": {
+    "batdau": "node chinh.js",
+    "start": "node chinh.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.5"
+  }
+}
