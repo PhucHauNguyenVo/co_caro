@@ -1,6 +1,8 @@
 const canvas = document.getElementById('bangcaro');
 const ctx = canvas.getContext('2d');
 const KICHTHUOC_O = 40;
+const KHOA_LUU_NGUOI_CHOI = 'caro:nguoi-choi-id';
+const KHOA_RESET_SAU_RELOAD = 'caro:reset-sau-reload';
 let soONgang = 15;
 let soODoc = 15;
 const MAU_MAC_DINH = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa', '#00897b', '#f4511e', '#3949ab', '#6d4c41', '#546e7a'];
@@ -8,7 +10,7 @@ const MAU_MAC_DINH = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa', '#0
 let dichuyenX = 0;
 let dichuyenY = 0;
 let bang = {};
-let maNguoiChoi = null;
+let maNguoiChoi = layHoacTaoNguoiChoiId();
 let nguoiChoi = [];
 let luotHienTai = 1;
 let maPhong = null;
@@ -45,6 +47,30 @@ let diemBatDauKeo = null;
 let dichuyenBatDau = null;
 let vuaKeoBanCo = false;
 let trangThaiPhongTruocDo = 'waiting';
+let daGuiTinHieuRoiPhong = false;
+
+function taoNguoiChoiIdNgauNhien() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+
+  return `player-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function layHoacTaoNguoiChoiId() {
+  try {
+    const nguoiChoiDaLuu = window.localStorage?.getItem(KHOA_LUU_NGUOI_CHOI);
+    if (nguoiChoiDaLuu) {
+      return nguoiChoiDaLuu;
+    }
+
+    const nguoiChoiMoi = taoNguoiChoiIdNgauNhien();
+    window.localStorage?.setItem(KHOA_LUU_NGUOI_CHOI, nguoiChoiMoi);
+    return nguoiChoiMoi;
+  } catch (_err) {
+    return taoNguoiChoiIdNgauNhien();
+  }
+}
 
 function randomMaPhong() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -65,7 +91,6 @@ function layTenNguoiChoi() {
 
 function resetTrangThaiPhong() {
   bang = {};
-  maNguoiChoi = null;
   nguoiChoi = [];
   luotHienTai = 1;
   dichuyenX = 0;
@@ -80,8 +105,83 @@ function resetTrangThaiPhong() {
   trangThaiPhongTruocDo = 'waiting';
 }
 
-function roiPhongHienTai() {
+function guiBeaconRoiPhong(lyDo = 'reload') {
+  if (!maPhong || !maNguoiChoi || typeof navigator.sendBeacon !== 'function') {
+    return;
+  }
+
+  try {
+    const payload = new Blob([
+      JSON.stringify({
+        maPhong,
+        nguoiChoiId: maNguoiChoi,
+        socketId: socket?.id || null,
+        lyDo
+      })
+    ], { type: 'application/json' });
+    navigator.sendBeacon('/roi-phong-beacon', payload);
+  } catch (_err) {
+    // Bo qua loi beacon, socket se la duong du phong khi con ket noi.
+  }
+}
+
+function luuYeuCauResetSauReload() {
+  if (!maPhong || !maNguoiChoi) {
+    return;
+  }
+
+  try {
+    window.sessionStorage?.setItem(KHOA_RESET_SAU_RELOAD, JSON.stringify({
+      maPhong,
+      nguoiChoiIdCu: maNguoiChoi
+    }));
+    window.localStorage?.removeItem(KHOA_LUU_NGUOI_CHOI);
+  } catch (_err) {
+    // Bo qua loi storage trong luc unload.
+  }
+}
+
+function layYeuCauResetSauReload(maPhongDich) {
+  try {
+    const duLieuDaLuu = window.sessionStorage?.getItem(KHOA_RESET_SAU_RELOAD);
+    if (!duLieuDaLuu) {
+      return null;
+    }
+
+    window.sessionStorage?.removeItem(KHOA_RESET_SAU_RELOAD);
+    const duLieu = JSON.parse(duLieuDaLuu);
+    if (!duLieu || duLieu.maPhong !== maPhongDich || !duLieu.nguoiChoiIdCu) {
+      return null;
+    }
+
+    return duLieu;
+  } catch (_err) {
+    return null;
+  }
+}
+
+function baoRoiPhongChuDong(lyDo = 'reload') {
+  if (daGuiTinHieuRoiPhong || !maPhong || !maNguoiChoi) {
+    return;
+  }
+
+  daGuiTinHieuRoiPhong = true;
+  if (lyDo === 'reload') {
+    luuYeuCauResetSauReload();
+  }
+  guiBeaconRoiPhong(lyDo);
+  if (socket?.connected) {
+    socket.emit('roi_phong_chu_dong', {
+      maPhong,
+      nguoiChoiId: maNguoiChoi,
+      lyDo
+    });
+  }
+}
+
+function roiPhongHienTai(lyDo = 'switch_room') {
   if (!socket) return;
+  baoRoiPhongChuDong(lyDo);
   socket.removeAllListeners();
   socket.disconnect();
   socket = null;
@@ -333,6 +433,28 @@ function guiYeuCauChoiLai() {
   socket.emit('choi_lai');
 }
 
+function guiYeuCauKickNguoiChoi(nguoiBiKickId) {
+  if (!socket) return;
+
+  if (!laChuPhong()) {
+    hienThongBaoTrongPhong('Chi chu phong moi duoc kick nguoi choi.');
+    return;
+  }
+
+  const nguoiBiKick = nguoiChoi.find((nguoi) => nguoi.id === nguoiBiKickId);
+  if (!nguoiBiKick || nguoiBiKick.id === maNguoiChoi) {
+    return;
+  }
+
+  const tenNguoi = tenHienThiNguoiChoi(nguoiBiKick, nguoiChoi.indexOf(nguoiBiKick));
+  const dongYKick = window.confirm(`Kick ${tenNguoi} khoi phong?`);
+  if (!dongYKick) {
+    return;
+  }
+
+  socket.emit('kick_nguoi_choi', { nguoiBiKickId });
+}
+
 async function copyMaPhongHienTai() {
   if (!maPhong) return;
 
@@ -358,9 +480,17 @@ function batDauVaoPhong(maPhongMoi, laTao) {
   const tenDaNhap = layTenNguoiChoi();
   if (!tenDaNhap) return;
 
-  maPhong = maPhongMoi;
-  laNguoiTaoPhong = laTao;
-  tenNguoiChoi = tenDaNhap;
+  const maPhongSapVao = maPhongMoi;
+  const seLaNguoiTaoPhong = laTao;
+  const tenSapDung = tenDaNhap;
+  const yeuCauResetSauReload = layYeuCauResetSauReload(maPhongSapVao);
+
+  roiPhongHienTai('switch_room');
+  daGuiTinHieuRoiPhong = false;
+
+  maPhong = maPhongSapVao;
+  laNguoiTaoPhong = seLaNguoiTaoPhong;
+  tenNguoiChoi = tenSapDung;
 
   if (menu) {
     menu.style.display = 'none';
@@ -377,7 +507,6 @@ function batDauVaoPhong(maPhongMoi, laTao) {
 
   canvas.style.display = 'block';
   resetTrangThaiPhong();
-  roiPhongHienTai();
   capNhatCheDoBanCo();
   veBang();
   veDanhSachNguoiChoi();
@@ -386,15 +515,16 @@ function batDauVaoPhong(maPhongMoi, laTao) {
 
   socket = io();
   socket.on('connect', () => {
-    maNguoiChoi = socket.id;
-    cacheTenNguoiChoi[socket.id] = tenNguoiChoi;
-    chuPhongId = laNguoiTaoPhong ? socket.id : chuPhongId;
+    cacheTenNguoiChoi[maNguoiChoi] = tenNguoiChoi;
+    chuPhongId = laNguoiTaoPhong ? maNguoiChoi : chuPhongId;
     capNhatNutBatDau();
     veTrangThai();
     socket.emit('vao_phong', {
       maPhong,
       laTaoPhong: laNguoiTaoPhong,
-      tenNguoiChoi
+      tenNguoiChoi,
+      nguoiChoiId: maNguoiChoi,
+      yeuCauResetSauReload
     });
     socket.emit('cap_nhat_ten', { tenNguoiChoi });
   });
@@ -480,11 +610,20 @@ function veDanhSachNguoiChoi() {
     const nhanKyHieu = nguoi.kyHieu ? ` (${nguoi.kyHieu})` : '';
     const nhanToi = nguoi.id === maNguoiChoi ? ' (ban)' : '';
     const nhanChuPhong = nguoi.id === chuPhongId ? ' - chu phong' : '';
-    const nhanLuot = index === luotHienTai - 1 && trangThaiPhong === 'playing' ? ' - dang di' : '';
+    const nhanMatKetNoi = nguoi.online === false ? ' - mat ket noi' : '';
+    const nhanLuot = index === luotHienTai - 1 && trangThaiPhong === 'playing' && nguoi.online !== false
+      ? ' - dang di'
+      : '';
+    const nutKick = laChuPhong() && nguoi.id !== maNguoiChoi
+      ? `<button class="nut-kick" type="button" data-kick-nguoi-choi="${nguoi.id}">Kick</button>`
+      : '';
     return `
       <div class="the-nguoi-choi">
         <span class="cham-mau" style="background:${mauNguoiChoi(nguoi, index)};"></span>
-        <span>${tenNguoi}${nhanKyHieu}${nhanToi}${nhanChuPhong}${nhanLuot}</span>
+        <span class="ten-nguoi-choi-wrap">
+          <span>${tenNguoi}${nhanKyHieu}${nhanToi}${nhanChuPhong}${nhanMatKetNoi}${nhanLuot}</span>
+          ${nutKick}
+        </span>
       </div>
     `;
   }).join('');
@@ -676,6 +815,11 @@ function veTrangThai() {
   }
 
   const nguoiDangDi = nguoiChoi[luotHienTai - 1];
+  if (nguoiDangDi && nguoiDangDi.online === false) {
+    trangthai.innerText = 'Dang cho nguoi choi ket noi lai...';
+    return;
+  }
+
   if (nguoiDangDi && nguoiDangDi.id === maNguoiChoi) {
     trangthai.innerText = 'Den luot ban!';
     return;
@@ -736,6 +880,23 @@ if (btnCopyMaPhong) {
     copyMaPhongHienTai();
   };
 }
+
+if (danhSachNguoiChoi) {
+  danhSachNguoiChoi.addEventListener('click', (e) => {
+    const nutKick = e.target.closest('[data-kick-nguoi-choi]');
+    if (!nutKick) return;
+
+    guiYeuCauKickNguoiChoi(nutKick.getAttribute('data-kick-nguoi-choi'));
+  });
+}
+
+window.addEventListener('pagehide', () => {
+  baoRoiPhongChuDong('reload');
+});
+
+window.addEventListener('beforeunload', () => {
+  baoRoiPhongChuDong('reload');
+});
 
 canvas.addEventListener('click', xuLyClickBanCo);
 canvas.addEventListener('pointerdown', batDauKeoBanCo);
